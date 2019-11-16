@@ -1,0 +1,59 @@
+---
+title: "Milestone 8"
+author: "Molly Chiang"
+date: "11/15/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+
+library(tidyverse)
+
+```
+
+```{r clean_data}
+
+ny_zillow <- raw_zillow %>%
+  filter(state == "NY",
+         city == "New York") %>%
+  select(region_name, state, county, zhvi)
+
+ny_airbnb <- raw_airbnb %>%
+  select(id, name, neighbourhood_group, neighbourhood, latitude, longitude, price, host_id, minimum_nights, number_of_reviews, availability_365)
+
+ny_data <- ny_airbnb %>%
+  full_join(ny_zillow, by = c("neighbourhood" = "region_name"))
+
+```
+
+
+## About Page
+
+Airbnb is a San Francisco based company founded in 2008. The company operates through a website and app that allows users to arrange and offer lodging. Guests can filter to look for different types of lodging, selecting different types (whole apartment, room in apartment, whole house, etc), dates, prices, and locations. Airbnb allows hosts and guests to communicate before and during the stay, and after a stay guests can leave ratings about houses/hosts. The company started in San Francisco but is now worldwide with hosts in cities and towns on every continent using the app. The company is one of the biggest lodging platforms, with big implications on local hospitality industries.
+
+The data used for this project comes from Inside Airbnb (http://insideairbnb.com/about.html). Inside Airbnb is a set of tools and data created to help people explore how Airbnb is really being used around the world. The project is not associated with Airbnb and is a website that has compiled publicly available information about Airbnb listings in different cities around the world. 
+
+This specific data contains lots of information. There is an id code for each listing, a name (created by the host), host id, host name, latitude, longitude, price per night, minimum nights for reservation, the number of reviews for the listing, the date of the latest review, the average number of reviews per month, the number of lists that host has, and the number of days of the year that the listing is available to rent. There are also neighborhood group and neighborhood which describe bigger neighborhood groupings and smaller ones. In cities in which there are not clear larger and smaller neighborhood groups the neighbourhood group column is empty.
+
+Zillow is _____.
+Zillow data is from September 30th 2019.
+
+
+## Plan 
+
+- graph - like the milestone 4 ones 
+  - ability to choose neighborhood and maybe some other features (number of reviews? 
+    something w/ names?)
+    
+- map - to do with the statistical anlysis
+  - map of NYC neighborhoods w/ different colors for coef between airbnb price and 
+    zhvi (median estimated home value for the region)
+  - perhaps also a graph of the linear regression...? (bootstrap........)
+  
+- about page 
+  
+  
+
+
