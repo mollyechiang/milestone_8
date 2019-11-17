@@ -1,4 +1,5 @@
 library(janitor)
+library(sf)
 library(tidyverse)
 
 raw_zillow <- 
@@ -46,3 +47,6 @@ raw_airbnb <-
                calculated_host_listings_count = col_double(),
                availability_365 = col_double()
              ))
+
+
+nyc_shapes <- st_read("http://data.insideairbnb.com/united-states/ny/new-york-city/2019-09-12/visualisations/neighbourhoods.geojson")

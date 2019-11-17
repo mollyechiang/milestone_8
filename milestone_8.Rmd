@@ -8,7 +8,8 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 
-
+library(janitor)
+library(sf)
 library(tidyverse)
 
 ```
@@ -18,13 +19,21 @@ library(tidyverse)
 ny_zillow <- raw_zillow %>%
   filter(state == "NY",
          city == "New York") %>%
-  select(region_name, state, county, zhvi)
+  select(region_name, zhvi)
 
 ny_airbnb <- raw_airbnb %>%
   select(id, name, neighbourhood_group, neighbourhood, latitude, longitude, price, host_id, minimum_nights, number_of_reviews, availability_365)
 
-ny_data <- ny_airbnb %>%
-  full_join(ny_zillow, by = c("neighbourhood" = "region_name"))
+nyc_data <- ny_airbnb %>%
+  full_join(ny_zillow, by = c("neighbourhood" = "region_name")) 
+
+median_ppn_data <- nyc_data %>% 
+  group_by(neighbourhood) %>% 
+  summarize(median_ppn = median(price))
+
+nyc_shapes_full <- nyc_shapes %>%
+  full_join(ny_zillow, by = c("neighbourhood" = "region_name")) %>%
+  full_join(median_ppn_data, by = c("neighbourhood"))
 
 ```
 
@@ -53,6 +62,12 @@ Zillow data is from September 30th 2019.
   - perhaps also a graph of the linear regression...? (bootstrap........)
   
 - about page 
+
+
+## Questions for OH
+- selecting certain stuff based on input...
+- where to put my actual code?
+    - in the app.R, in an Rmd, in a prep.R file?
   
   
 

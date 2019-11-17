@@ -2,7 +2,7 @@ library(purrr)
 library(shiny)
 library(tidyverse)
 
-ui <- navbarPage("New York City Airbnb's",
+ui <- navbarPage("New York City Housing Prices",
                  tabPanel("Graphs",
                           sidebarLayout(
                               sidebarPanel(
@@ -16,7 +16,21 @@ ui <- navbarPage("New York City Airbnb's",
                               ),
                               
                               mainPanel(
-                                  plotOutput("distPlot")
+                                  plotOutput("graph")
+                              )
+                          )
+                 ),
+                 tabPanel("Map",
+                          sidebarLayout(
+                              sidebarPanel(
+                                  
+                                  radioButtons(inputId = "data", 
+                                               label = "Data",
+                                               choices = list("Median House Value" = 1, "Median Airbnb Price Per Night" = 2), selected = 1)
+                              ),
+                              
+                              mainPanel(
+                                  plotOutput("map")
                               )
                           )
                  ),
@@ -33,7 +47,7 @@ ui <- navbarPage("New York City Airbnb's",
 # Define server logic required to draw a histogram
 server <- function(input, output) {
 
-    output$distPlot <- renderPlot({
+    output$graph<- renderPlot({
        
          graph_data <- ny_data %>% 
             group_by(neighbourhood) %>%
@@ -55,6 +69,20 @@ server <- function(input, output) {
             theme_classic() +
             theme(axis.text.x = element_text(angle=65, vjust=0.6))
     })
+    
+    output$map <- renderPlot({
+    
+        data <- switch(input$data, 
+                       '1' = nyc_shapes_full$zhvi,
+                       '2' = nyc_shapes_full$median_ppn)
+        
+        ggplot() + 
+            geom_sf(data = nyc_shapes_full, aes(fill = data)) +
+            scale_fill_gradient(low = "wheat1", high = "red")
+    
+    })
+    
+    
 }
 
 
