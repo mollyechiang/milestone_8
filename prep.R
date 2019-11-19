@@ -65,7 +65,7 @@ raw_airbnb <-
 
 
 nyc_shapes <- st_read("http://data.insideairbnb.com/united-states/ny/new-york-city/2019-09-12/visualisations/neighbourhoods.geojson")
-
+nyc_boroughs <- st_read("https://data.cityofnewyork.us/api/geospatial/tqmj-j8zm?method=export&format=GeoJSON")
 
 
 
@@ -81,8 +81,25 @@ nyc_shapes_full <- nyc_shapes %>%
 
 
 
-write_rds(nyc_data, "milestone_8_shiny/nyc_data.rds")
-write_rds(median_ppn_data, "milestone_8_shiny/ppn_nyc_data.rds")
-write_rds(nyc_shapes_full, "milestone_8_shiny/nyc_shapes_clean.rds")
 
+regression <- median_ppn_data %>% 
+  ungroup(zhvi) %>%
+  mutate(zhvi = zhvi/1000) %>%
+  drop_na() %>%
+  group_by(neighbourhood_group) %>%
+  nest() %>%
+  mutate(models = map(data, ~lm(data = .x, formula = median_ppn ~ zhvi))) %>%
+  mutate(values = map(models, ~coef(.x))) %>%
+  mutate(slope = map_dbl(values, ~pluck(.x, "zhvi"))) 
+
+stats <- nyc_boroughs %>%
+  inner_join(regression, by = c("boro_name" = "neighbourhood_group")) %>%
+  select(boro_name, slope)
+
+
+
+write_rds(nyc_data, "m8_shiny/nyc_data.rds")
+write_rds(median_ppn_data, "m8_shiny/ppn_nyc_data.rds")
+write_rds(nyc_shapes_full, "m8_shiny/nyc_shapes_clean.rds")
+write_rds(stats, "m8_shiny/nyc_statistics.rds")
 
