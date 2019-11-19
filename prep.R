@@ -1,3 +1,4 @@
+library(broom)
 library(janitor)
 library(sf)
 library(tidyverse)
@@ -25,7 +26,9 @@ raw_zillow <-
                PctFallFromPeak = col_double(),
                LastTimeAtCurrZHVI = col_character()
              )) %>%
-  clean_names()
+  clean_names() %>% 
+  filter(state == "NY",city == "New York") %>%
+  select(region_name, zhvi)
 
 raw_airbnb <-
   read_csv("http://data.insideairbnb.com/united-states/ny/new-york-city/2019-09-12/visualisations/listings.csv", col_types = 
@@ -46,7 +49,40 @@ raw_airbnb <-
                reviews_per_month = col_double(),
                calculated_host_listings_count = col_double(),
                availability_365 = col_double()
-             ))
+             )) %>%
+  select(id, 
+         name, 
+         neighbourhood_group, 
+         neighbourhood, 
+         latitude, 
+         longitude, 
+         price, 
+         host_id, 
+         minimum_nights, 
+         number_of_reviews, 
+         availability_365)
+
 
 
 nyc_shapes <- st_read("http://data.insideairbnb.com/united-states/ny/new-york-city/2019-09-12/visualisations/neighbourhoods.geojson")
+
+
+
+
+nyc_data <- raw_airbnb %>%
+  full_join(raw_zillow, by = c("neighbourhood" = "region_name")) 
+
+median_ppn_data <- nyc_data %>% 
+  group_by(neighbourhood, zhvi, neighbourhood_group) %>% 
+  summarize(median_ppn = median(price))
+
+nyc_shapes_full <- nyc_shapes %>%
+  full_join(median_ppn_data, by = c("neighbourhood", "neighbourhood_group"))
+
+
+
+write_rds(nyc_data, "milestone_8_shiny/nyc_data.rds")
+write_rds(median_ppn_data, "milestone_8_shiny/ppn_nyc_data.rds")
+write_rds(nyc_shapes_full, "milestone_8_shiny/nyc_shapes_clean.rds")
+
+
