@@ -6,6 +6,7 @@ ui <- navbarPage("New York City Housing Prices",
                  tabPanel("Graphs",
                           sidebarLayout(
                               sidebarPanel(
+                                  
                                   selectInput(inputId = "neighborhood",
                                               label = "Neighborhood",
                                               choices = c("Bronx", "Brooklyn", "Manhattan", "Queens", "Staten Island")),
@@ -58,8 +59,8 @@ server <- function(input, output) {
             arrange(desc(ave_price)) %>%
             filter(neighbourhood_group == input$neighborhood)
         
-        ggplot(graph_data, aes(x= neighbourhood, 
-                               y= ave_price, 
+        ggplot(graph_data, aes(x = neighbourhood, 
+                               y = ave_price, 
                                fill = neighbourhood_group)) +
             geom_col() +
             labs(y = "Average Price Per Night", 
