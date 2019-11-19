@@ -1,13 +1,8 @@
 library(purrr)
 library(shiny)
 library(shinythemes)
+library(sf)
 library(tidyverse)
-
-
-nyc_data <- read_rds("nyc_data.rds")
-ppn_nyc_data <- read_rds("ppn_nyc_data.rds")
-nyc_shapes_full <- read_rds("nyc_shapes_clean.rds")
-stats <- read_rds("nyc_statistics.rds")
 
 
 ui <- navbarPage(theme = shinytheme("sandstone"), "New York City Housing Prices",
@@ -92,6 +87,8 @@ server <- function(input, output) {
     
     output$graph1 <- renderPlot({
         
+        nyc_data <- read_rds("nyc_data.rds")
+        
         nyc_data %>% 
 
             # create new column ave_price which gives the average price per neighborhood
@@ -138,7 +135,9 @@ server <- function(input, output) {
     
     output$graph2 <- renderPlot({
         
-        median_ppn_data %>% 
+        ppn_nyc_data <- read_rds("ppn_nyc_data.rds")
+        
+        ppn_nyc_data %>% 
             
             # change the scale of zhvi to be in million dollars (so easier to understand on graph)
             
@@ -180,6 +179,8 @@ server <- function(input, output) {
     
     output$map <- renderPlot({
         
+        nyc_shapes_full <- read_rds("nyc_shapes_clean.rds")
+        
         # change units of zhvi before plotting
         
         nyc_shapes_full <- nyc_shapes_full %>%
@@ -205,6 +206,8 @@ server <- function(input, output) {
     
     output$stats_map <- renderPlot({
         
+        stats <- read_rds("nyc_statistics.rds")
+        
         # plot coefficients explaining airbnb price by median home value by borough
         
         ggplot() + 
@@ -218,8 +221,10 @@ server <- function(input, output) {
     
     
     output$stats <- renderPlot({
+        
+        ppn_nyc_data <- read_rds("ppn_nyc_data.rds")
     
-        median_ppn_data %>%
+        ppn_nyc_data %>%
             drop_na() %>%
             
             # change units of zhvi so it's easier to understand
