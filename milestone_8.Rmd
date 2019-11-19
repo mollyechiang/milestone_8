@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 
+library(broom)
 library(janitor)
 library(sf)
 library(tidyverse)
@@ -27,15 +28,36 @@ ny_airbnb <- raw_airbnb %>%
 nyc_data <- ny_airbnb %>%
   full_join(ny_zillow, by = c("neighbourhood" = "region_name")) 
 
+
+
+
+
 median_ppn_data <- nyc_data %>% 
-  group_by(neighbourhood) %>% 
+  group_by(neighbourhood, zhvi, neighbourhood_group) %>% 
   summarize(median_ppn = median(price))
 
 nyc_shapes_full <- nyc_shapes %>%
-  full_join(ny_zillow, by = c("neighbourhood" = "region_name")) %>%
   full_join(median_ppn_data, by = c("neighbourhood"))
 
 ```
+
+```{r statistical_analysis}
+
+regression <- median_ppn_data %>%
+  select(neighbourhood, zhvi, median_ppn) %>%
+  drop_na() %>%
+  mutate(id = 1:154) %>%
+  group_by(id, neighbourhood) %>%
+  nest() %>%
+  mutate(models = map(data, ~lm(data = .x, formula = median_ppn ~ zhvi))) %>%
+  mutate(values = map(models, ~coef(.x))) %>%
+  mutate(slope = map_dbl(values, ~pluck(.x, "zhvi")))
+
+model <- lm(data = nyc_shapes_full, median_ppn ~ zhvi)
+
+
+```
+
 
 
 ## About Page
@@ -68,6 +90,11 @@ Zillow data is from September 30th 2019.
 - selecting certain stuff based on input...
 - where to put my actual code?
     - in the app.R, in an Rmd, in a prep.R file?
+    
+
+## Other notes
+- make sure to remeber 3 pg pdf write up to be included in directory
+- and video - w/ link in write up
   
   
 

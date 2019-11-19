@@ -63,7 +63,7 @@ server <- function(input, output) {
                                fill = neighbourhood_group)) +
             geom_col() +
             labs(y = "Average Price Per Night", 
-                 x = "Neighborhoods with Top 15 Prices Per Night", 
+                 x = "Neighborhood", 
                  title = paste(input$neighborhood, "Airbnb Prices by Neighborhood", sep = " ")) +
             guides(fill = FALSE) +
             theme_classic() +
