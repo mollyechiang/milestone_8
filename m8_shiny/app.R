@@ -3,6 +3,13 @@ library(shiny)
 library(shinythemes)
 library(tidyverse)
 
+
+nyc_data <- read_rds("nyc_data.rds")
+ppn_nyc_data <- read_rds("ppn_nyc_data.rds")
+nyc_shapes_full <- read_rds("nyc_shapes_clean.rds")
+stats <- read_rds("nyc_statistics.rds")
+
+
 ui <- navbarPage(theme = shinytheme("sandstone"), "New York City Housing Prices",
                  tabPanel("Graphs",
                           sidebarLayout(
@@ -18,7 +25,8 @@ ui <- navbarPage(theme = shinytheme("sandstone"), "New York City Housing Prices"
                               ),
                               
                               mainPanel(
-                                  plotOutput("graph")
+                                  plotOutput("graph1"),
+                                  plotOutput("graph2")
                               )
                           )
                  ),
@@ -37,102 +45,198 @@ ui <- navbarPage(theme = shinytheme("sandstone"), "New York City Housing Prices"
                           )
                  ),
                  tabPanel("Statistical Analysis",
-                          sidebarLayout(
-                              sidebarPanel(
-                                  
-                                  radioButtons(inputId = "data", 
-                                               label = "Data",
-                                               choices = list("Median House Value" = 1, "Median Airbnb Price Per Night" = 2), selected = 1)
-                              ),
-                              
-                              mainPanel(
-                                  plotOutput("stats_map")
-                                  )
-                          )
+                            mainPanel(
+                                plotOutput("stats_map"),
+                                plotOutput("stats")
+                            )
                  ),
                  tabPanel("About",
-                          h2("About Airbnb"),
-                          p("Airbnb is a San Francisco based company founded in 2008. The company operates through a website 
-                            and app that allows users to arrange and offer lodging. Guests can filter to look for different 
-                            types of lodging, selecting different types (whole apartment, room in apartment, whole house, etc),
-                            dates, prices, and locations. Airbnb allows hosts and guests to communicate before and during the 
-                            stay, and after a stay guests can leave ratings about houses/hosts. The company started in San 
-                            Francisco but is now worldwide with hosts in cities and towns on every continent using the app. 
-                            The company is one of the biggest lodging platforms, with big implications on local hospitality 
-                            industries."),
+                          h2("About The Project"),
+                          p("This project aims to provide insights on house/lodging pricing in New York City.
+                            New York City is one of the most analyzed cities in terms of housing and lodging prices,
+                            not only because it is one of the largest cities in the US, but because it has a very unique
+                            housing market that is subject to a number of stereotypes. Through this project, I hope to shed
+                            some light on what ideas and theories about New York housing are false, and which hold some truth.
+                            Also by comparing housing value and airbnb prices, I wanted to look a bit into how different
+                            modes of lodging were priced differently in different areas."),
                           br(),
-                          p("The data used for this project comes from Inside Airbnb (http://insideairbnb.com/about.html). 
-                            Inside Airbnb is a set of tools and data created to help people explore how Airbnb is really 
-                            being used around the world. The project is not associated with Airbnb and is a website that 
-                            has compiled publicly available information about Airbnb listings in different cities around 
-                            the world."),
+                          h2("About The Data"),
+                          p("Zillow is an online real estate database. Zillow collects data on houses, apartments, condos, etc.
+                            that are for sale and for rent all across the United States. It tracks a number of variables
+                            (demographic, location, credit scores, etc) including listed prices and sale prices which are 
+                            used to make algorithms which create accurate estimates of house values. The data for this 
+                            project comes from Zillow's 'Zillow Research' platform (https://www.zillow.com/research/data/). 
+                            Zillow research is independent from
+                            Zillow's revenue center and aims to provide open, accurate data on the US housing market.
+                            "),
+                          p("The specific data from zillow used in this project is from September 30th 2019. 
+                          The data contained information on this month's zhvi value for all homes (home, apartment,
+                          condo, etc.) on the neighborhood level. Thus, there was data on neighborhoods of metro 
+                          areas all across the US (I, however, selected only NYC data to analyze). The zhvi (Zillow Home Value Index) value is Zillow's smoothed, 
+                          time-dependent measure of the median estimated home value across a given region in USD.
+                            "),
                           br(),
-                          p("This specific data contains lots of information. There is an id code for each listing, a name 
-                            (created by the host), host id, host name, latitude, longitude, price per night, minimum nights 
-                            for reservation, the number of reviews for the listing, the date of the latest review, the 
-                            average number of reviews per month, the number of lists that host has, and the number of days 
-                            of the year that the listing is available to rent. There are also neighborhood group and 
-                            neighborhood which describe bigger neighborhood groupings and smaller ones. In cities in which 
-                            there are not clear larger and smaller neighborhood groups the neighbourhood group column is empty."),
-                          br(),
-                          h2("About Zillow"),
-                          p("Zillow is _____. Zillow data is from September 30th 2019.")
+                          p("Airbnb is a website that allows users to arrange and offer lodging. The company is one 
+                            of the biggest lodging platforms, with big implications on local hospitality industries. 
+                            The data used for this project comes from Inside Airbnb (http://insideairbnb.com/about.html), which 
+                            is a set of data (independent from Airbnb the company) created to help people explore how Airbnb is really 
+                            being used around the world."),
+                          p("This specific data for this project contains host, lodging, location, price, and review information
+                            for airbnbs in New York City. I also used data from Inside Airbnb that contained shapefiles for
+                            all the neighborhoods in NYC in order to plot results on a map")
                  ))
 
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     
-    output$graph<- renderPlot({
+    output$graph1 <- renderPlot({
         
-        graph_data <- ny_data %>% 
+        nyc_data %>% 
+
+            # create new column ave_price which gives the average price per neighborhood
+
             group_by(neighbourhood) %>%
             mutate(ave_price = ave(price)) %>%
+            
+            # remove those neighborhoods that have less than 5 airbnbs contributing to this ave price
+            # these neighborhoods have so little data they can easily be skewed
+            
             group_by(neighbourhood, neighbourhood_group, ave_price) %>%
             count() %>%
-            filter(n>5) %>% 
+            filter(n>5) %>%
             arrange(desc(ave_price)) %>%
+            
+            # filter for the selected borough and selected number of neighborhoods to show
+            
             filter(neighbourhood_group == input$neighborhood) %>%
             ungroup() %>%
             slice(switch(input$radio,
                          '1' = 1:n(),
                          '2' = 1:15,
-                         '3' = -1:-(n()-15)
-                
-            ))
+                         '3' = -1:-(n()-15))) %>%
+            
+            # plot this data - with ave price on y axis and neighborhood on x
         
-        ggplot(graph_data, aes(x = neighbourhood, 
+            ggplot(aes(x = neighbourhood, 
                                y = ave_price, 
                                fill = neighbourhood_group)) +
             geom_col() +
-            labs(y = "Average Price Per Night", 
-                 x = "Neighborhood", 
+            labs(y = "Average Price Per Night ($)", 
+                 x = " ", 
                  title = paste(input$neighborhood, "Airbnb Prices by Neighborhood", sep = " ")) +
             guides(fill = FALSE) +
             theme_classic() +
             theme(axis.text.x = element_text(angle=65, vjust=0.6)) +
+            
+            # set a y-lim so all boroughs are compared on same scale 
+            
             ylim(0,500)
+        
     })
     
+    
+    output$graph2 <- renderPlot({
+        
+        median_ppn_data %>% 
+            
+            # change the scale of zhvi to be in million dollars (so easier to understand on graph)
+            
+            ungroup(zhvi) %>%
+            mutate(zhvi = zhvi/1000000) %>%
+            
+            #drop NA rows, and arrange descending by zhvi
+            
+            drop_na(zhvi, neighbourhood_group) %>% 
+            arrange(desc(zhvi)) %>%
+            
+            # filter for the selected borough and selected number of neighborhoods to show
+            
+            filter(neighbourhood_group == input$neighborhood) %>%
+            ungroup() %>%
+            slice(switch(input$radio,
+                         '1' = 1:n(),
+                         '2' = 1:15,
+                         '3' = -1:-(n()-15))) %>%
+            
+            # plot this data - with zhvi (median house value) on y axis and neighborhood on x
+            
+            ggplot(aes(x = neighbourhood, 
+                               y = zhvi, 
+                               fill = neighbourhood_group)) +
+            geom_col() +
+            labs(y = "Median House Value (in million $)", 
+                 x = " ", 
+                 title = paste(input$neighborhood, "House Values by Neighborhood", sep = " ")) +
+            guides(fill = FALSE) +
+            theme_classic() +
+            theme(axis.text.x = element_text(angle=65, vjust=0.6)) +
+            
+            # add a y limit so all boroughs are compared on the same scale
+            
+            ylim(0,3)
+    })
+    
+    
     output$map <- renderPlot({
+        
+        # change units of zhvi before plotting
+        
+        nyc_shapes_full <- nyc_shapes_full %>%
+            ungroup(zhvi) %>%
+            mutate(zhvi = zhvi/1000)
+        
+        # use switch() to change the data to use in our heat map
         
         data <- switch(input$data, 
                        '1' = nyc_shapes_full$zhvi,
                        '2' = nyc_shapes_full$median_ppn)
+        # plot the different data
         
         ggplot() + 
             geom_sf(data = nyc_shapes_full, aes(fill = data)) +
-            scale_fill_gradient(low = "wheat1", high = "red")
+            scale_fill_gradient(low = "wheat1", high = "red") +
+            labs(title = "Heat Map of NYC Neighborhoods",
+                 fill = case_when(input$data == '1' ~ "Median House Value (thousand $)",
+                                  input$data == '2' ~ "Median Airbnb Price per Night ($)"))
         
     })
     
+    
     output$stats_map <- renderPlot({
         
+        # plot coefficients explaining airbnb price by median home value by borough
         
         ggplot() + 
             geom_sf(data = stats, aes(fill = slope)) +
-            scale_fill_gradient(low = "wheat1", high = "red")
+            scale_fill_gradient(low = "wheat1", high = "red") + 
+            labs(title = "Boroughs Colored by Linear Regression Coefficient",
+                 subtitle = "Coefficient Explains Airbnb Price Per Night by Home Value",
+                 fill = "Coefficient")
         
+    })
+    
+    
+    output$stats <- renderPlot({
+    
+        median_ppn_data %>%
+            drop_na() %>%
+            
+            # change units of zhvi so it's easier to understand
+            
+            ungroup(zhvi) %>%
+            mutate(zhvi = zhvi/1000) %>%
+            
+            # plot shvi and median_ppn with regression line
+            
+            ggplot(aes(x = zhvi, y = median_ppn)) +
+            geom_jitter(aes(color = neighbourhood_group)) +
+            geom_smooth(method = "lm") + 
+            labs(title = "Explaining Median Airbnb Price By Median House Value in NYC Neighborhoods",
+                 subtitle = "A Linear Regression",
+                 x = "Median House Value (in thousand $)",
+                 y = "Median Airbnb Price Per Night ($)",
+                 color = "Borough") 
     })
     
     
