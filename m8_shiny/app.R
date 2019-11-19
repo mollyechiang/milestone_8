@@ -47,10 +47,10 @@ ui <- navbarPage("New York City Housing Prices",
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-
+    
     output$graph<- renderPlot({
-       
-         graph_data <- ny_data %>% 
+        
+        graph_data <- ny_data %>% 
             group_by(neighbourhood) %>%
             mutate(ave_price = ave(price)) %>%
             group_by(neighbourhood, neighbourhood_group, ave_price) %>%
@@ -72,7 +72,7 @@ server <- function(input, output) {
     })
     
     output$map <- renderPlot({
-    
+        
         data <- switch(input$data, 
                        '1' = nyc_shapes_full$zhvi,
                        '2' = nyc_shapes_full$median_ppn)
@@ -80,7 +80,7 @@ server <- function(input, output) {
         ggplot() + 
             geom_sf(data = nyc_shapes_full, aes(fill = data)) +
             scale_fill_gradient(low = "wheat1", high = "red")
-    
+        
     })
     
     
@@ -88,3 +88,4 @@ server <- function(input, output) {
 
 
 shinyApp(ui = ui, server = server)
+
