@@ -2,14 +2,22 @@ library(purrr)
 library(shiny)
 library(shinythemes)
 library(sf)
+library(broom)
+library(gt)
 library(tidyverse)
 
 
 ui <- navbarPage(theme = shinytheme("sandstone"), "New York City Housing Prices",
-                 tabPanel("Graphs",
+                 tabPanel("Neighborhood Graphs",
                           sidebarLayout(
                               sidebarPanel(
                                   
+                                  h4("About"),
+                                  p("These graphs display neighborhoods of the New York City boroughs 
+                                    and their associated median Airbnb price per night or median home value."),
+                                  p("The borough to be viewed can be selected--as well as whether to display 
+                                    all of the neighborhoods (with available data) or just the 15 most or 
+                                    least expensive in a given category."),
                                   selectInput(inputId = "neighborhood",
                                               label = "Borough",
                                               choices = c("Bronx", "Brooklyn", "Manhattan", "Queens", "Staten Island")),
@@ -25,13 +33,17 @@ ui <- navbarPage(theme = shinytheme("sandstone"), "New York City Housing Prices"
                               )
                           )
                  ),
-                 tabPanel("Map",
+                 tabPanel("Price Map",
                           sidebarLayout(
                               sidebarPanel(
                                   
+                                  h4("About"),
+                                  p("This map shows the neighborhoods of New York City colored by 
+                                  their price. More red neighborhoods are more expensive"),
                                   radioButtons(inputId = "data", 
                                                label = "Data",
-                                               choices = list("Median House Value" = 1, "Median Airbnb Price Per Night" = 2), selected = 1)
+                                               choices = list("Median House Value" = 1, "Median Airbnb Price Per Night" = 2), selected = 1),
+                                  p("(gray neighborhoods are missing data)")
                               ),
                               
                               mainPanel(
@@ -39,11 +51,52 @@ ui <- navbarPage(theme = shinytheme("sandstone"), "New York City Housing Prices"
                               )
                           )
                  ),
-                 tabPanel("Statistical Analysis",
-                            mainPanel(
-                                plotOutput("stats_map"),
-                                plotOutput("stats")
+                 navbarMenu("Statistical Analysis",
+                            tabPanel("Map",
+                                     sidebarLayout(
+                                         sidebarPanel(
+                                             h4("About"),
+                                             p("This map shows the boroughs of New York City colored by 
+                                               their linear regression coefficient."),
+                                             p("The coefficients come from a linear regression that explains
+                                               median Airbnb price per night by median home value for a given
+                                               neighborhood."),
+                                             p("More red neighborhoods have higher coefficients, indicating
+                                               that neighborhoods of this borough have high correlation 
+                                               between airbnb prices and home values.")
+                                         ),
+                                         
+                                         mainPanel(
+                                             plotOutput("stats_map")
+                                         )
+                                     )
+                            ),
+                            
+                            tabPanel("Graph",
+                                     sidebarPanel(
+                                         h4("About"),
+                                         p("This graph plots neighborhoods with their median house value
+                                           (in thousand dollars) on the x axis and median airbnb price
+                                           per night (in dollars) on the y axis. 
+                                           The neighborhoods are colored by their corresponding borough."),
+                                           p("A linear regression was then run to explain the airbnb 
+                                           price by median home value and the resulting best-fit line 
+                                           plotted. Below the graph is the average coefficient value 
+                                           (slope of the regression line), the 5th and 95th percentile 
+                                           values to give an indication of uncertainty associated with 
+                                           the term, and its corresponding r-squared value to give an 
+                                           indication of fit.")
+                                     ),
+                                     
+                                     mainPanel(
+                                         plotOutput("stats"),
+                                         h4("Linear Regression Information:"),
+                                         tableOutput("stats_table")
+                                     )
                             )
+    
+                            
+                            
                  ),
                  tabPanel("About",
                           h2("About The Project"),
@@ -78,7 +131,7 @@ ui <- navbarPage(theme = shinytheme("sandstone"), "New York City Housing Prices"
                             being used around the world."),
                           p("This specific data for this project contains host, lodging, location, price, and review information
                             for airbnbs in New York City. I also used data from Inside Airbnb that contained shapefiles for
-                            all the neighborhoods in NYC in order to plot results on a map")
+                            all the neighborhoods in NYC in order to plot results on a map.")
                  ))
 
 
@@ -159,6 +212,7 @@ server <- function(input, output) {
                          '3' = -1:-(n()-15))) %>%
             
             # plot this data - with zhvi (median house value) on y axis and neighborhood on x
+            # add labels, a theme, and modify the angle of text on x axis
             
             ggplot(aes(x = neighbourhood, 
                                y = zhvi, 
@@ -192,14 +246,18 @@ server <- function(input, output) {
         data <- switch(input$data, 
                        '1' = nyc_shapes_full$zhvi,
                        '2' = nyc_shapes_full$median_ppn)
-        # plot the different data
+        
+        # plot the different data on a map using geom_sf
+        # change the fill gradient colors
+        # add labels and theme
         
         ggplot() + 
             geom_sf(data = nyc_shapes_full, aes(fill = data)) +
             scale_fill_gradient(low = "wheat1", high = "red") +
             labs(title = "Heat Map of NYC Neighborhoods",
                  fill = case_when(input$data == '1' ~ "Median House Value (thousand $)",
-                                  input$data == '2' ~ "Median Airbnb Price per Night ($)"))
+                                  input$data == '2' ~ "Median Airbnb Price per Night ($)")) +
+            theme_minimal()
         
     })
     
@@ -209,13 +267,16 @@ server <- function(input, output) {
         stats <- read_rds("nyc_statistics.rds")
         
         # plot coefficients explaining airbnb price by median home value by borough
+        # plot this on a map using geom_sf
+        # add labels and theme
         
         ggplot() + 
             geom_sf(data = stats, aes(fill = slope)) +
             scale_fill_gradient(low = "wheat1", high = "red") + 
             labs(title = "Boroughs Colored by Linear Regression Coefficient",
                  subtitle = "Coefficient Explains Airbnb Price Per Night by Home Value",
-                 fill = "Coefficient")
+                 fill = "Coefficient") +
+            theme_minimal()
         
     })
     
@@ -232,7 +293,9 @@ server <- function(input, output) {
             ungroup(zhvi) %>%
             mutate(zhvi = zhvi/1000) %>%
             
-            # plot shvi and median_ppn with regression line
+            # plot zhvi vs  median_ppn, add color to points
+            # add regression line with geom_smooth
+            # add titles and theme
             
             ggplot(aes(x = zhvi, y = median_ppn)) +
             geom_jitter(aes(color = neighbourhood_group)) +
@@ -241,7 +304,59 @@ server <- function(input, output) {
                  subtitle = "A Linear Regression",
                  x = "Median House Value (in thousand $)",
                  y = "Median Airbnb Price Per Night ($)",
-                 color = "Borough") 
+                 color = "Borough") +
+            theme_minimal()
+            
+    })
+    
+  
+      output$stats_table <- renderTable({
+        
+        ppn_nyc_data <- read_rds("ppn_nyc_data.rds")
+        
+        # first clean imported data by changing units on zhvi
+        # and dropping rows with NA
+        
+        cleaner_ppn <- ppn_nyc_data %>%
+            drop_na() %>%
+            ungroup(zhvi) %>%
+            mutate(zhvi = zhvi/1000)
+        
+        # run the linear regression
+        
+        model <- lm(data = cleaner_ppn, formula = median_ppn ~ zhvi)
+        
+        # use confint_tidy function from broom to get the confidence intervals
+        # on the coefficient (select for only coefficient)
+        # add a label so the table can be joined with others
+        
+        conf_ints <- confint_tidy(model, conf.level = .9) %>% 
+            mutate(label = c("Intercept", "Coefficient")) %>%
+            filter(label == "Coefficient")
+        
+        # use glance function from broom to get r squared volume 
+        # on the linear regression
+        # add a label so this table can be joined with the others
+        
+        r_squared <- glance(model) %>%
+            select(r.squared) %>%
+            mutate(label = "Coefficient")
+        
+        # join all tables (only coefficient values)
+        # select relevant columns and rename them
+        
+        tidy(model) %>%
+            mutate(label = c("Intercept", "Coefficient")) %>%
+            filter(label == "Coefficient") %>%
+            select(label, estimate) %>%
+            inner_join(conf_ints, by = "label") %>%
+            inner_join(r_squared, by = "label") %>%
+            select(estimate, conf.low, conf.high, r.squared) %>%
+            rename("Coefficient" = estimate,
+                   "5th Percentile" = conf.low,
+                   "95th Percentile" = conf.high,
+                   "R Squared" = r.squared)
+        
     })
     
     
